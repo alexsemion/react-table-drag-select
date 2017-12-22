@@ -3,8 +3,15 @@ import equal from "deep-is";
 import clone from "clone";
 import PropTypes from "prop-types";
 
+/**
+ * Minimum amount of px for selection to start
+ *
+ * @type {number}
+ */
+const SELECTION_START_AT = 20;
+
 export default class TableDragSelect extends React.Component {
-  static propTypes = {
+  propTypes = {
     value: props => {
       const error = new Error(
         "Invalid prop `value` supplied to `TableDragSelect`. Validation failed."
@@ -69,6 +76,8 @@ export default class TableDragSelect extends React.Component {
     addMode: null
   };
 
+  touchStartCoordinates = null;
+
   componentDidMount = () => {
     window.addEventListener("mouseup", this.handleTouchEndWindow);
     window.addEventListener("touchend", this.handleTouchEndWindow);
@@ -83,9 +92,7 @@ export default class TableDragSelect extends React.Component {
     const { value, onChange, ...props } = this.props;
     return (
       <table className="table-drag-select" {...props}>
-        <tbody>
-          {this.renderRows()}
-        </tbody>
+        <tbody>{this.renderRows()}</tbody>
       </table>
     );
   };
@@ -94,7 +101,7 @@ export default class TableDragSelect extends React.Component {
     React.Children.map(this.props.children, (tr, i) => {
       return (
         <tr key={i} {...tr.props}>
-          {React.Children.map(tr.props.children, (cell, j) =>
+          {React.Children.map(tr.props.children, (cell, j) => (
             <Cell
               key={j}
               onTouchStart={this.handleTouchStartCell}
@@ -105,7 +112,7 @@ export default class TableDragSelect extends React.Component {
             >
               {cell.props.children}
             </Cell>
-          )}
+          ))}
         </tr>
       );
     });
@@ -113,9 +120,25 @@ export default class TableDragSelect extends React.Component {
   handleTouchStartCell = e => {
     const isLeftClick = e.button === 0;
     const isTouch = e.type !== "mousedown";
-    if (!this.state.selectionStarted && (isLeftClick || isTouch)) {
-      e.preventDefault();
-      const { row, column } = eventToCellLocation(e);
+
+    this.touchStartCoordinates = [e.clientX, e.clientY];
+  };
+
+  handleTouchMoveCell = e => {
+    if (this.touchStartCoordinates === null) {
+      return;
+    }
+
+    const { selectionStarted } = this.state;
+    const [touchX, touchY] = this.touchStartCoordinates;
+
+    const startSelection =
+      Math.abs(e.clientX - touchX) >= SELECTION_START_AT ||
+      Math.abs(e.clientY - touchY) >= SELECTION_START_AT;
+
+    const { row, column } = eventToCellLocation(e);
+
+    if (!selectionStarted && startSelection) {
       this.setState({
         selectionStarted: true,
         startRow: row,
@@ -125,12 +148,14 @@ export default class TableDragSelect extends React.Component {
         addMode: !this.props.value[row][column]
       });
     }
-  };
 
-  handleTouchMoveCell = e => {
-    if (this.state.selectionStarted) {
+    if (selectionStarted) {
       e.preventDefault();
-      const { row, column } = eventToCellLocation(e);
+
+      if (!startSelection) {
+        this.setState({ selectionStarted: false });
+      }
+
       this.setState({
         endRow: row,
         endColumn: column
@@ -141,6 +166,7 @@ export default class TableDragSelect extends React.Component {
   handleTouchEndWindow = e => {
     const isLeftClick = e.button === 0;
     const isTouch = e.type !== "mousedown";
+
     if (this.state.selectionStarted && (isLeftClick || isTouch)) {
       const value = clone(this.props.value);
       const minRow = Math.min(this.state.startRow, this.state.endRow);
@@ -161,6 +187,8 @@ export default class TableDragSelect extends React.Component {
       this.setState({ selectionStarted: false });
       this.props.onChange(value);
     }
+
+    this.touchStartCoordinates = null;
   };
 
   isCellBeingSelected = (row, column) => {
