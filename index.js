@@ -59,12 +59,16 @@ export default class TableDragSelect extends React.Component {
           }
         }
       }
-    }
+    },
+    classNameCellBeingSelected:PropTypes.string,
+    classNameCellSelected:PropTypes.string
   };
 
   static defaultProps = {
     value: [],
-    onChange: () => {}
+    onChange: () => {},
+    classNameCellBeingSelected:'cell-being-selected',
+    classNameCellSelected:'cell-selected'
   };
 
   state = {
@@ -97,12 +101,16 @@ export default class TableDragSelect extends React.Component {
     );
   };
 
-  renderRows = () =>
-    React.Children.map(this.props.children, (tr, i) => {
+  renderRows = () =>{
+    const {classNameCellBeingSelected, classNameCellSelected}=this.props;
+
+    return React.Children.map(this.props.children, (tr, i) => {
       return (
         <tr key={i} {...tr.props}>
           {React.Children.map(tr.props.children, (cell, j) => (
             <Cell
+              classNameBeingSelected={classNameCellBeingSelected}
+              classNameSelected={classNameCellSelected}
               key={j}
               onTouchStart={this.handleTouchStartCell}
               onTouchMove={this.handleTouchMoveCell}
@@ -116,6 +124,7 @@ export default class TableDragSelect extends React.Component {
         </tr>
       );
     });
+  }
 
   handleTouchStartCell = e => {
     const isLeftClick = e.button === 0;
@@ -232,6 +241,8 @@ class Cell extends React.Component {
   render = () => {
     let {
       className,
+      classNameBeingSelected,
+      classNameSelected,
       disabled,
       beingSelected,
       selected,
@@ -239,15 +250,16 @@ class Cell extends React.Component {
       onTouchMove,
       ...props
     } = this.props;
+
     if (disabled) {
       className += " cell-disabled";
     } else {
       className += " cell-enabled";
       if (selected) {
-        className += " cell-selected";
+        className += ` ${classNameSelected}`;
       }
       if (beingSelected) {
-        className += " cell-being-selected";
+        className += ` ${classNameBeingSelected}`;
       }
     }
     return (
