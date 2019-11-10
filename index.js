@@ -3,6 +3,8 @@ import equal from "deep-is";
 import clone from "clone";
 import PropTypes from "prop-types";
 
+console.log("hfhhhf");
+
 /**
  * Minimum amount of px for selection to start
  *
